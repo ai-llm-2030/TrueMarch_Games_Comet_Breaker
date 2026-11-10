@@ -16,6 +16,13 @@
   <img src="assets/screenshot-play.png" alt="Comet Breaker — gameplay" width="820">
 </p>
 
+## More screenshots
+
+<table>
+<tr><td width="50%"><img src="assets/screenshot-map.png" alt="The world map"><br><sub>The world map</sub></td><td width="50%"><img src="assets/screenshot-play-b.png" alt="Mid-stage"><br><sub>Mid-stage</sub></td></tr>
+<tr><td width="50%"><img src="assets/screenshot-result.png" alt="Out of paddles: the result"><br><sub>Out of paddles: the result</sub></td><td width="50%"><img src="assets/screenshot-how.png" alt="Every capsule and brick"><br><sub>Every capsule and brick</sub></td></tr>
+</table>
+
 ## Controls
 
 | Keys | Action |
