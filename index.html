@@ -362,6 +362,7 @@
             <button class="nb btn2 ghost" data-act="endless">Endless</button>
             <button class="nb btn2 ghost" data-act="time">Time Attack</button>
             <button class="nb btn2 ghost" data-act="daily" id="dailyBtn">Daily</button>
+            <button class="nb btn2 ghost" data-act="build">Wall Builder</button>
             <button class="nb btn2 ghost" data-act="shop">Workshop</button>
             <button class="nb btn2 ghost" data-act="how">How to play</button>
             <button class="nb btn2 ghost" data-act="settings">Settings</button>
@@ -415,6 +416,16 @@
           <p class="kick">Field manual</p><h2 class="ttl">How to play</h2>
           <div class="how" id="howBody"></div>
           <div class="row"><button class="nb btn2 ghost" data-act="back">Back <small>Esc</small></button></div>
+        </div>
+      </div>
+
+      <div class="ui" id="uiCode" hidden>
+        <div class="panel">
+          <p class="kick">Wall Builder</p><h2 class="ttl">Load a code</h2>
+          <p class="sub">Paste a share code from a friend (it starts with <b>CB</b>). Their wall opens in the builder, ready to play or remix.</p>
+          <input id="codeIn" type="text" spellcheck="false" autocomplete="off" placeholder="CB0:…" aria-label="Share code" style="width:100%;box-sizing:border-box;font:700 1em ui-monospace,Menlo,Consolas,monospace;padding:.55em .6em;border-radius:.5em;border:.1em solid rgba(94,220,255,.5);background:rgba(0,0,0,.4);color:#e6f3ff">
+          <p class="sub" id="codeErr" style="color:#ff9a9a;min-height:1.2em"></p>
+          <div class="row"><button class="nb btn2" data-act="bload">Load <small>Enter</small></button><button class="nb btn2 ghost" data-act="back">Back <small>Esc</small></button></div>
         </div>
       </div>
 
@@ -897,7 +908,7 @@
 
   function speedFor(w, tier) {
     var D = G.D, Wd = WORLDS[w];
-    if (G.kind === 'stage') return [Wd.base * D.sp, Wd.max * D.sp];
+    if (G.kind === 'stage' || G.kind === 'custom') return [Wd.base * D.sp, Wd.max * D.sp];
     return [Math.min(262 + tier * 9, 350) * D.sp, Math.min(480 + tier * 14, 650) * D.sp];
   }
 
@@ -2148,6 +2159,7 @@
     if (G.kind === 'stage') { label = (G.s === 7 ? 'BOSS' : (G.w + 1) + '-' + (G.s + 1)) + ' · ' + G.def.n.toUpperCase(); sub = Wd.name.toUpperCase(); }
     else if (G.kind === 'endless') { label = 'ENDLESS · WALL ' + (G.wall + 1); sub = G.boss ? 'BOSS WALL' : 'TIER ' + (G.wall + 1); }
     else if (G.kind === 'daily') { label = 'DAILY · WALL ' + Math.min(G.wall + 1, 3) + ' / 3'; sub = today(); }
+    else if (G.kind === 'custom') { label = 'YOUR WALL · PAR ' + mmss(G.par); sub = 'WALL BUILDER · ' + Wd.name.toUpperCase(); }
     else { label = mmss(G.clock); sub = 'TIME ATTACK · WALL ' + (G.wall + 1); }
     if (G.kind === 'time') {
       txt(sub, W / 2, 13, 8, '#7f9cc8', 'center', 800);
@@ -2232,7 +2244,7 @@
 
   /* ══ Screens ════════════════════════════════════════════════════════════ */
   var TOUCH = !!(window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches);
-  var UI = { title: $('uiTitle'), map: $('uiMap'), shop: $('uiShop'), settings: $('uiSettings'), how: $('uiHow'), pause: $('uiPause'), result: $('uiResult') };
+  var UI = { title: $('uiTitle'), map: $('uiMap'), shop: $('uiShop'), settings: $('uiSettings'), how: $('uiHow'), pause: $('uiPause'), result: $('uiResult'), code: $('uiCode') };
   var mode = 'title', navSel = 0, mapW = 0, mapS = 0, shopTab = 0, shopFrom = 'title', setFrom = 'title', howFrom = 'title';
   var countUps = [], starTimers = [], toastQ = [], toastT = 0;
   var RUN = { kind: 'stage', w: 0, s: 0 };
@@ -2492,7 +2504,8 @@
       '<h3>Bricks</h3><div class="hgrid">' + brk + '</div>' +
       '<h3>Stars</h3><p>★ clear the stage · ★ lose no paddle · ★ beat the par time. Stars and broken bricks earn ◆ shards for the Workshop.</p>' +
       '<h3>Bosses</h3><p>Each world ends with one. They shoot (a hit stuns your paddle) and hide weak points — find the spot that makes them flinch.</p>' +
-      '<h3>Modes</h3><p><b>Endless</b> — walls forever, a boss every sixth. <b>Time Attack</b> — two minutes, +20 s a wall, −10 s a dropped comet. <b>Daily</b> — the same three walls for everyone today.</p>';
+      '<h3>Modes</h3><p><b>Endless</b> — walls forever, a boss every sixth. <b>Time Attack</b> — two minutes, +20 s a wall, −10 s a dropped comet. <b>Daily</b> — the same three walls for everyone today.</p>' +
+      '<h3>Wall Builder</h3><p>Paint your own wall on the real brick grid with every brick type, pick its world, then <b>Test it</b>. Three stars work as in the campaign (clear · no paddle lost · par). <b>Copy code</b> gives a short share code a friend pastes into <b>Load code</b> to play your wall. Keys: arrows + Space paint, 0–6 / Q E choose a brick, F mirror, B world, N surprise, T test.</p>';
   }
   function showHow() { if (mode !== 'how') howFrom = mode; mode = 'how'; show('how'); }
 
@@ -2566,7 +2579,7 @@
       loadWall(genWall(Math.random, 2 + ri(5)), ri(4), 3, null);
       return;
     }
-    if (G.kind === 'stage') { G.warped = warped; finish(true); return; }
+    if (G.kind === 'stage' || G.kind === 'custom') { G.warped = warped; finish(true); return; }
     G.wall++;
     G.score += 500;
     if (G.kind === 'time') { G.clock += 20; }
@@ -2575,6 +2588,7 @@
   }
   function retry() {
     if (RUN.kind === 'stage') startStage(RUN.w, RUN.s);
+    else if (RUN.kind === 'custom') startCustom();
     else startRun(RUN.kind);
   }
   function openPause() {
@@ -2585,21 +2599,24 @@
   }
   function pausePaint() {
     if (!G || G.demo) return;
-    $('pauseKick').textContent = G.kind === 'stage' ? 'Stage ' + (G.w + 1) + '-' + (G.s + 1) + ' · ' + G.def.n : { endless: 'Endless', time: 'Time Attack', daily: 'Daily ' + today() }[G.kind];
+    $('pauseKick').textContent = G.kind === 'stage' ? 'Stage ' + (G.w + 1) + '-' + (G.s + 1) + ' · ' + G.def.n : { endless: 'Endless', time: 'Time Attack', daily: 'Daily ' + today(), custom: 'Wall Builder · test run' }[G.kind];
     $('pauseTally').innerHTML = '<span>Score</span><b>' + fmt(G.score) + '</b>' +
       (G.kind === 'time' ? '<span>Clock</span><b>' + mmss(G.clock) + '</b>' : '<span>Paddles</span><b>' + G.lives + '</b>') +
       '<span>Time</span><b>' + mmss(G.t) + '</b>' + (G.kind === 'stage' && !G.boss ? '<span>Bricks left</span><b>' + G.remaining + '</b>' : '');
-    $('quitBtn').textContent = RUN.kind === 'stage' ? 'Quit to map' : 'Quit to menu';
+    $('quitBtn').textContent = RUN.kind === 'stage' ? 'Quit to map' : RUN.kind === 'custom' ? 'Back to builder' : 'Quit to menu';
   }
   function resume() { if (mode !== 'pause') return; mode = 'play'; show(null); MUS.on = true; held.left = held.right = false; }
-  function quit() { if (RUN.kind === 'stage') showMap(true); else showTitle(); }
+  function quit() { if (RUN.kind === 'stage') showMap(true); else if (RUN.kind === 'custom') showBuild(); else showTitle(); }
 
   /* ── Results ──────────────────────────────────────────────────────────── */
   function row(label, v, cls, pre) { countUps.push(0); return '<span>' + label + '</span><b class="' + (cls || '') + '" data-v="' + Math.round(v) + '" data-p="' + (pre || '') + '">' + (pre || '') + '0</b>'; }
   function finish(win) {
     var g = G, D = g.D, ttl, cls = 'gold', kick = '', tally = '', btns = '', stars = '', best = false, earn = 0;
     starTimers.forEach(clearTimeout); starTimers = []; countUps = [];
-    if (g.kind === 'stage') {
+    if (g.kind === 'custom') {
+      var cu = finishCustom(g, win);
+      kick = cu.kick; ttl = cu.ttl; cls = cu.cls; stars = cu.stars; tally = cu.tally; btns = cu.btns; best = cu.best;
+    } else if (g.kind === 'stage') {
       var w = g.w, s = g.s, key = w + '-' + s, rec = SAVE.st[key] || { c: 0, s: [0, 0, 0], hi: 0 };
       if (!Array.isArray(rec.s)) rec.s = [0, 0, 0];
       kick = 'World ' + (w + 1) + ' · ' + WORLDS[w].name + ' · ' + g.def.n;
@@ -2654,7 +2671,7 @@
       btns = '<button class="nb btn2" data-act="retry">' + (g.kind === 'daily' ? 'Try again' : 'Again') + ' <small>Enter</small></button><button class="nb btn2 ghost" data-act="shop">Workshop</button><button class="nb btn2 ghost" data-act="back">Menu <small>Esc</small></button>';
     }
     SAVE.shards += earn; persist();
-    Arcade.best('breaker', g.score);
+    if (g.kind !== 'custom') Arcade.best('breaker', g.score);
     $('resKick').textContent = kick;
     var tt = $('resTtl'); tt.textContent = ttl; tt.className = 'ttl ' + cls;
     $('resRays').style.display = cls === 'red' ? 'none' : '';
@@ -2702,6 +2719,278 @@
     }
   }
 
+
+  /* ══ Wall Builder ═══════════════════════════════════════════════════════
+   * Paint your own wall on the real 14 × 12 brick grid, test it with your
+   * paddle, and pass it on as a short share code (CB<world>:<rows>:<check>).
+   * A row is run-length packed: a run of 3+ of one brick is the brick then a
+   * letter (D = 3 … O = 14); trailing empties are dropped. The last letter is
+   * a checksum, so a mistyped code is refused instead of loading garbage.
+   * Kept under its own key: gt_breaker_walls (draft, settings, bests). */
+  var BKEY = 'gt_breaker_walls', ER = 12;
+  var BRUSH = ['.', '1', '2', '3', '4', '5', '6', 'm', 'n', 's', 'g', 'x', 'v', '*'];
+  var BNAME = { '.': 'Eraser', 1: 'Colour 1', 2: 'Colour 2', 3: 'Colour 3', 4: 'Colour 4', 5: 'Colour 5', 6: 'Colour 6', m: 'Cracked glass', n: 'Thick glass', s: 'Silver plate', g: 'Gold (never breaks)', x: 'Powder keg', v: 'Slider', '*': 'Star brick' };
+  var GRID_Y1 = BY + ER * BH, PAL_Y = 300, PAL_X = 16, PAL_S = 32;
+  var BBTN = [
+    { id: 'test', l: 'Test it', k: 'T', x: 16, y: 470, w: 140, main: 1 }, { id: 'copy', l: 'Copy code', k: 'C', x: 170, y: 470, w: 140 }, { id: 'load', l: 'Load code', k: 'L', x: 324, y: 470, w: 140 },
+    { id: 'mirror', l: 'Mirror', k: 'F', x: 16, y: 514, w: 104 }, { id: 'world', l: 'World', k: 'B', x: 128, y: 514, w: 104 }, { id: 'rand', l: 'Surprise', k: 'N', x: 240, y: 514, w: 104 }, { id: 'clear', l: 'Clear', k: 'X', x: 352, y: 514, w: 112 },
+  ];
+  function emptyGrid() { var g = []; for (var r = 0; r < ER; r++) g.push(new Array(COLS + 1).join('.')); return g; }
+  function bLoad() {
+    var d = null;
+    try { d = JSON.parse(localStorage.getItem(BKEY) || 'null'); } catch (e) { d = null; }
+    d = obj(d);
+    var dec = typeof d.draft === 'string' ? decodeWall(d.draft) : null;
+    return { grid: dec ? dec.grid : starterWall(), w: dec ? dec.w : 0, mirror: d.mirror !== false, best: obj(d.best), cx: 6, cy: 2, brush: 1, hx: -1, hy: -1, msg: '', msgT: 0, clr: 0, kb: false };
+  }
+  function bSave() {
+    var keys = Object.keys(ED.best);
+    if (keys.length > 40) keys.slice(0, keys.length - 40).forEach(function (k) { delete ED.best[k]; });
+    try { localStorage.setItem(BKEY, JSON.stringify({ draft: encodeWall(ED.grid, ED.w), mirror: ED.mirror, best: ED.best })); } catch (e) { /* private mode */ }
+  }
+  function starterWall() {
+    var g = emptyGrid();
+    ['..............', '..1111111111..', '..2222**2222..', '..3333333333..', '...mmmmmmmm...'].forEach(function (r, i) { g[i + 1] = r; });
+    return g;
+  }
+  function wallSum(s) { var n = 0; for (var i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) % 104729; return String.fromCharCode(65 + n % 26); }
+  function encodeWall(grid, w) {
+    var rows = grid.map(function (row) {
+      row = row.replace(/\.+$/, '');
+      return row.replace(/(.)\1{2,}/g, function (m, c) { return c + String.fromCharCode(65 + m.length); });
+    });
+    while (rows.length && rows[rows.length - 1] === '') rows.pop();
+    var head = 'CB' + w + ':' + rows.join('-');
+    return head + ':' + wallSum(head);
+  }
+  function decodeWall(code) {
+    code = String(code || '').replace(/\s+/g, '');
+    var m = /^CB([0-3]):([.1-6mnsgxv*A-O-]*):([A-Z])$/.exec(code);
+    if (!m || wallSum('CB' + m[1] + ':' + m[2]) !== m[3]) return null;
+    var rows = m[2] ? m[2].split('-') : [], grid = emptyGrid();
+    if (rows.length > ER) return null;
+    for (var r = 0; r < rows.length; r++) {
+      var out = '', s = rows[r];
+      for (var i = 0; i < s.length; i++) {
+        var ch = s.charAt(i);
+        if (ch >= 'A' && ch <= 'O') { if (!out) return null; out += new Array(ch.charCodeAt(0) - 65).join(out.charAt(out.length - 1)); }
+        else out += ch;
+      }
+      if (out.length > COLS) return null;
+      grid[r] = out + new Array(COLS - out.length + 1).join('.');
+    }
+    return { grid: grid, w: +m[1] };
+  }
+  function wallStats(grid) {
+    var n = 0, br = 0;
+    grid.forEach(function (row) { for (var i = 0; i < row.length; i++) { var c = row.charAt(i); if (c !== '.') { n++; if (c !== 'g') br++; } } });
+    return { n: n, br: br };
+  }
+  var ED = null;
+  function edSet(r, c, ch) {
+    if (r < 0 || r >= ER || c < 0 || c >= COLS) return;
+    var put = function (cc) { var row = ED.grid[r]; ED.grid[r] = row.slice(0, cc) + ch + row.slice(cc + 1); };
+    put(c);
+    if (ED.mirror) put(COLS - 1 - c);
+  }
+  function edMsg(s) { ED.msg = s; ED.msgT = 2.4; }
+  function showBuild() {
+    if (!ED) ED = bLoad();
+    mode = 'build'; ED.clr = 0; ptr.down = false;
+    MUS.calm = true; MUS.boss = false; MUS.on = true; MUS.w = ED.w;
+    show('build');
+    if (!SAVE.seen.builder) { SAVE.seen.builder = 1; persist(); edMsg('Pick a brick below, then paint the grid'); }
+  }
+  function copyText(s) {
+    function legacy() {
+      var ta = document.createElement('textarea'); ta.value = s; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e) { /* the code stays on screen to copy by hand */ }
+      ta.remove();
+    }
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(s).catch(legacy); return; } } catch (e) { /* fall through */ }
+    legacy();
+  }
+  function buildAct(id) {
+    audio();
+    var st;
+    switch (id) {
+      case 'test':
+        st = wallStats(ED.grid);
+        if (!st.br) { sfx('no'); edMsg('Add at least one brick that can break'); return; }
+        bSave(); sfx('ok'); startCustom(); return;
+      case 'copy': copyText(encodeWall(ED.grid, ED.w)); bSave(); sfx('ok'); edMsg('Share code copied'); return;
+      case 'load': sfx('ok'); showCode(); return;
+      case 'mirror': ED.mirror = !ED.mirror; bSave(); sfx('nav'); edMsg(ED.mirror ? 'Mirror on: both halves paint together' : 'Mirror off: paint freely'); return;
+      case 'world': ED.w = (ED.w + 1) % 4; MUS.w = ED.w; bSave(); sfx('nav'); edMsg(WORLDS[ED.w].name + ' — its colours, speed and silver'); return;
+      case 'rand':
+        var rows = genWall(Math.random, 2 + ri(6)), g = emptyGrid();
+        rows.slice(0, ER).forEach(function (r, i) { g[i] = r.length === 7 ? r + r.split('').reverse().join('') : r; });
+        ED.grid = g; bSave(); sfx('ok'); edMsg('A fresh wall to remix'); return;
+      case 'clear':
+        if (ED.clr > 0) { ED.grid = emptyGrid(); ED.clr = 0; bSave(); sfx('lose'); edMsg('Cleared'); }
+        else { ED.clr = 2; sfx('nav'); edMsg('Clear the whole wall? Press again'); }
+        return;
+    }
+  }
+  function buildKey(e) {
+    var c = e.code;
+    if (/^Digit[0-6]$/.test(c) || /^Numpad[0-6]$/.test(c)) { ED.brush = +c.charAt(c.length - 1); sfx('nav'); return true; }
+    if (c === 'Backspace' || c === 'Delete') { ED.kb = true; edSet(ED.cy, ED.cx, '.'); bSave(); sfx('hit'); return true; }
+    if (c === 'KeyQ' || c === 'KeyE') { ED.brush = (ED.brush + (c === 'KeyQ' ? -1 : 1) + BRUSH.length) % BRUSH.length; sfx('nav'); return true; }
+    var map = { KeyT: 'test', KeyC: 'copy', KeyL: 'load', KeyF: 'mirror', KeyB: 'world', KeyN: 'rand', KeyX: 'clear' };
+    if (map[c]) { buildAct(map[c]); return true; }
+    return false;
+  }
+  function buildNav(k) {
+    ED.kb = true;
+    if (k === 'left') ED.cx = (ED.cx + COLS - 1) % COLS;
+    else if (k === 'right') ED.cx = (ED.cx + 1) % COLS;
+    else if (k === 'up') ED.cy = (ED.cy + ER - 1) % ER;
+    else if (k === 'down') ED.cy = (ED.cy + 1) % ER;
+    else if (k === 'action') {
+      var b = BRUSH[ED.brush], cur = ED.grid[ED.cy].charAt(ED.cx);
+      edSet(ED.cy, ED.cx, cur === b ? '.' : b); bSave(); sfx(cur === b ? 'hit' : 'brick', ED.brush);
+    }
+  }
+  var bPaint = null;
+  function buildCell(x, y) {
+    if (x < BX || x >= BX + COLS * BW || y < BY || y >= GRID_Y1) return null;
+    return [Math.floor((y - BY) / BH), Math.floor((x - BX) / BW)];
+  }
+  function buildPointer(type, x, y, button) {
+    var cell = buildCell(x, y);
+    if (type === 'move') {
+      ED.hx = cell ? cell[1] : -1; ED.hy = cell ? cell[0] : -1;
+      if (bPaint && cell) { var k = cell[0] + ',' + cell[1]; if (bPaint.last !== k) { bPaint.last = k; edSet(cell[0], cell[1], bPaint.ch); sfx('nav'); } }
+      return;
+    }
+    if (type === 'up') { if (bPaint) { bPaint = null; bSave(); } return; }
+    ED.kb = false;
+    if (cell) {
+      var b = BRUSH[ED.brush], cur = ED.grid[cell[0]].charAt(cell[1]);
+      var ch = button === 2 ? '.' : cur === b ? '.' : b;
+      bPaint = { ch: ch, last: cell[0] + ',' + cell[1] };
+      ED.cy = cell[0]; ED.cx = cell[1]; edSet(cell[0], cell[1], ch); sfx(ch === '.' ? 'hit' : 'brick', ED.brush);
+      return;
+    }
+    if (y >= PAL_Y && y < PAL_Y + 26 && x >= PAL_X && x < PAL_X + BRUSH.length * PAL_S) { ED.brush = Math.floor((x - PAL_X) / PAL_S); sfx('nav'); return; }
+    for (var i = 0; i < BBTN.length; i++) { var q = BBTN[i]; if (x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + 34) { buildAct(q.id); return; } }
+    if (x < 120 && y < 50) { sfx('nav'); showTitle(); }
+  }
+  function edBrickSprite(ch, r) {
+    if (ch >= '1' && ch <= '6') return brickSprite(ED.w, 'c', ch.charCodeAt(0) - 49);
+    return brickSprite(ED.w, ch, r % 6);
+  }
+  function renderBuild(dt) {
+    var t = now() / 1000, Wd = WORLDS[ED.w], i, r, c;
+    if (ED.msgT > 0) ED.msgT -= dt;
+    if (ED.clr > 0) ED.clr -= dt;
+    ctx.setTransform(K, 0, 0, K, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(bgFor(ED.w), 0, 0, W, H);
+    ctx.fillStyle = 'rgba(2,4,16,.45)'; ctx.fillRect(0, 0, W, H);
+    txt('‹ MENU', 16, 30, 11, '#7f9cc8', 'left', 800);
+    txt('WALL BUILDER', W / 2, 30, 18, '#ffffff', 'center', 900);
+    txt(Wd.name.toUpperCase() + (ED.mirror ? ' · MIRROR ON' : ''), W / 2, 50, 9, Wd.acc, 'center', 800);
+    // the grid
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(BX, BY, COLS * BW, ER * BH);
+    ctx.strokeStyle = 'rgba(140,200,255,.12)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (c = 0; c <= COLS; c++) { ctx.moveTo(BX + c * BW + .5, BY); ctx.lineTo(BX + c * BW + .5, GRID_Y1); }
+    for (r = 0; r <= ER; r++) { ctx.moveTo(BX, BY + r * BH + .5); ctx.lineTo(BX + COLS * BW, BY + r * BH + .5); }
+    ctx.stroke();
+    if (ED.mirror) { ctx.setLineDash([4, 4]); ctx.strokeStyle = rgba(Wd.acc, .55); ctx.beginPath(); ctx.moveTo(W / 2, BY - 6); ctx.lineTo(W / 2, GRID_Y1 + 6); ctx.stroke(); ctx.setLineDash([]); }
+    for (r = 0; r < ER; r++) for (c = 0; c < COLS; c++) {
+      var ch = ED.grid[r].charAt(c);
+      if (ch !== '.') ctx.drawImage(edBrickSprite(ch, r), BX + c * BW, BY + r * BH, BW, BH);
+    }
+    // hover ghost (mouse) or the keyboard cursor
+    var hx = ED.kb ? ED.cx : ED.hx, hy = ED.kb ? ED.cy : ED.hy;
+    if (hx >= 0 && hy >= 0) {
+      var bb = BRUSH[ED.brush], cells = [hx];
+      if (ED.mirror && COLS - 1 - hx !== hx) cells.push(COLS - 1 - hx);
+      cells.forEach(function (cx, j) {
+        var x = BX + cx * BW, y = BY + hy * BH;
+        if (bb !== '.') { ctx.globalAlpha = .45; ctx.drawImage(edBrickSprite(bb, hy), x, y, BW, BH); ctx.globalAlpha = 1; }
+        ctx.strokeStyle = j ? 'rgba(255,255,255,.4)' : (Math.sin(t * 8) > 0 ? '#ffffff' : Wd.acc); ctx.lineWidth = 2;
+        ctx.strokeRect(x + 1, y + 1, BW - 2, BH - 2);
+      });
+    }
+    // where the paddle will be, for scale
+    txt('▼ the comet launches from down here', W / 2, GRID_Y1 + 14, 8, '#56709a', 'center', 700);
+    // palette
+    for (i = 0; i < BRUSH.length; i++) {
+      var px = PAL_X + i * PAL_S, on = i === ED.brush;
+      ctx.fillStyle = on ? rgba(Wd.acc, .35) : 'rgba(255,255,255,.06)'; rr(ctx, px + 1, PAL_Y, PAL_S - 2, 26, 4); ctx.fill();
+      if (on) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke(); }
+      if (BRUSH[i] === '.') { ctx.strokeStyle = '#ff7a7a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px + 10, PAL_Y + 8); ctx.lineTo(px + 22, PAL_Y + 18); ctx.moveTo(px + 22, PAL_Y + 8); ctx.lineTo(px + 10, PAL_Y + 18); ctx.stroke(); }
+      else ctx.drawImage(edBrickSprite(BRUSH[i], 0), px + 4, PAL_Y + 6, 24, 12);
+      if (i <= 6) txt(String(i), px + PAL_S / 2, PAL_Y + 38, 8, '#7f9cc8', 'center', 800);
+    }
+    txt('Brush: ' + BNAME[BRUSH[ED.brush]], W / 2, PAL_Y + 58, 12, '#ffffff', 'center', 800);
+    // the numbers
+    var st = wallStats(ED.grid), code = encodeWall(ED.grid, ED.w), best = ED.best[code];
+    var hits = 0;
+    ED.grid.forEach(function (row) { for (var k = 0; k < row.length; k++) { var q = row.charAt(k); hits += q === '.' || q === 'g' ? 0 : q === 'm' ? 2 : q === 'n' ? 3 : q === 's' ? ED.w + 2 : 1; } });
+    txt(st.n + ' bricks · ' + st.br + ' to break · par ' + mmss(Math.round((16 + hits * .85) / 5) * 5) + (best ? ' · your best ' + fmt(best) : ''), W / 2, PAL_Y + 80, 10, '#a9c3e8', 'center', 700);
+    if (ED.msgT > 0) { ctx.globalAlpha = Math.min(1, ED.msgT * 2); txt(ED.msg, W / 2, PAL_Y + 112, 13, '#ffd36b', 'center', 800); ctx.globalAlpha = 1; }
+    else txt(TOUCH ? 'Tap a brick, then tap or drag on the grid' : 'Click / drag to paint · right-click erases · same brick again erases', W / 2, PAL_Y + 112, 10, '#7f9cc8', 'center', 700);
+    // buttons
+    BBTN.forEach(function (q) {
+      var lab = q.id === 'mirror' ? 'Mirror ' + (ED.mirror ? 'on' : 'off') : q.id === 'world' ? Wd.name.split(' ')[1] || Wd.name : q.id === 'clear' && ED.clr > 0 ? 'Sure?' : q.l;
+      ctx.fillStyle = q.main ? lgrad(ctx, 0, q.y, 0, q.y + 34, [0, '#ffe7a3', .45, '#ffbe4d', 1, '#e9861a']) : 'rgba(30,70,130,.7)';
+      rr(ctx, q.x, q.y, q.w, 34, 8); ctx.fill();
+      if (!q.main) { ctx.strokeStyle = 'rgba(94,220,255,.45)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+      txt(lab.toUpperCase(), q.x + q.w / 2 - (TOUCH ? 0 : 8), q.y + 22, 11, q.main ? '#2a1200' : '#c6f1ff', 'center', 900);
+      if (!TOUCH) txt(q.k, q.x + q.w - 12, q.y + 22, 9, q.main ? '#7a3a00' : '#6f9cc8', 'center', 800);
+    });
+    // the share code itself, always on screen so it can be copied by hand too
+    var shown = code.length > 70 ? code.slice(0, 67) + '…' : code;
+    txt('SHARE CODE', W / 2, 572, 8, '#7f9cc8', 'center', 800);
+    ctx.font = '700 10px ui-monospace, Menlo, Consolas, monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#e6f3ff'; ctx.fillText(shown, W / 2, 588);
+    if (!TOUCH) txt('Arrows move · Space paints · 0–6 / Q E pick a brick · Esc menu', W / 2, 616, 9, '#56709a', 'center', 700);
+  }
+  /* Load-a-code panel: a real text field, so paste works everywhere. */
+  function showCode() {
+    mode = 'bcode';
+    $('codeIn').value = ''; $('codeErr').textContent = '';
+    show('code');
+    setTimeout(function () { try { $('codeIn').focus(); } catch (e) { /* ignore */ } }, 30);
+  }
+  function loadCode() {
+    var d = decodeWall($('codeIn').value);
+    if (!d) { sfx('no'); $('codeErr').textContent = 'That code does not check out — copy it again, all of it.'; return; }
+    ED.grid = d.grid; ED.w = d.w; bSave(); sfx('ok');
+    showBuild(); edMsg('Wall loaded — press T to play it');
+  }
+  /* A test run of the wall in the builder: three paddles, the stage's star rules, no shards. */
+  function startCustom() {
+    audio();
+    RUN = { kind: 'custom' };
+    newGame('custom', { w: ED.w });
+    G.code = encodeWall(ED.grid, ED.w); G.enRate = 0;
+    loadWall(ED.grid, ED.w, ED.w * 2, null);
+    banner('YOUR WALL', WORLDS[ED.w].name, 1.6);
+    beginPlay();
+    firstTip('custom', '<b>Test run</b> — clear it under par without losing a paddle for all three stars');
+  }
+  function finishCustom(g, win) {
+    var lifeB = win ? g.lives * 300 : 0, timeB = win ? Math.max(0, Math.round((g.par - g.t) * 10)) : 0;
+    g.score += lifeB + timeB;
+    var prev = ED.best[g.code] || 0, best = win && g.score > prev;
+    if (best) { ED.best[g.code] = g.score; bSave(); }
+    var got = [win ? 1 : 0, win && g.lost === 0 ? 1 : 0, win && g.t <= g.par ? 1 : 0];
+    var stars = [['Clear', win ? 'Done' : '—'], ['No paddle lost', g.lost ? g.lost + ' lost' : 'Flawless'], ['Par ' + mmss(g.par), mmss(g.t)]].map(function (q, i) {
+      return '<div class="s3" data-on="' + got[i] + '"><div class="bdg">' + starSvg(true) + '</div><span class="lb">' + q[0] + '<br>' + q[1] + '</span></div>';
+    }).join('');
+    var tally = row('Score', g.score, 'big') + (win ? row('Paddle bonus', lifeB) + (timeB ? row('Time bonus', timeB) : '') : row('Bricks left', g.remaining)) +
+      row('Best combo', g.maxCombo) + row('Best on this wall', Math.max(prev, win ? g.score : 0));
+    var btns = '<button class="nb btn2" data-act="build">Edit wall <small>Enter</small></button><button class="nb btn2 ghost" data-act="retry">Again <small>R</small></button>' +
+      '<button class="nb btn2 ghost" data-act="bcopy">Copy code</button><button class="nb btn2 ghost" data-act="back">Menu <small>Esc</small></button>';
+    return { kick: 'Wall Builder · ' + WORLDS[g.w].name, ttl: win ? 'Wall cleared' : 'Out of paddles', cls: win ? 'gold' : 'red', stars: win ? stars : '', tally: tally, btns: btns, best: best && prev > 0 };
+  }
+
   /* ══ Input ══════════════════════════════════════════════════════════════ */
   screenEl.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]');
@@ -2712,6 +3001,9 @@
       case 'endless': startRun('endless'); break;
       case 'time': startRun('time'); break;
       case 'daily': startRun('daily'); break;
+      case 'build': sfx('ok'); showBuild(); break;
+      case 'bcopy': if (ED) { copyText(encodeWall(ED.grid, ED.w)); sfx('ok'); b.textContent = 'Copied ✓'; } break;
+      case 'bload': loadCode(); break;
       case 'shop': sfx('ok'); showShop(); break;
       case 'how': sfx('ok'); showHow(); break;
       case 'settings': sfx('ok'); showSettings(); break;
@@ -2757,6 +3049,8 @@
     else if (mode === 'shop') shopBack();
     else if (mode === 'how') { if (howFrom === 'pause') { mode = 'pause'; pausePaint(); show('pause'); } else showTitle(); }
     else if (mode === 'map') showTitle();
+    else if (mode === 'build') showTitle();
+    else if (mode === 'bcode') showBuild();
     else if (mode === 'result') { if (RUN.kind === 'stage') showMap(true); else showTitle(); }
     else return;
     sfx('nav');
@@ -2771,6 +3065,7 @@
     if (e.key === 'Escape' || e.code === 'Escape') { e.preventDefault(); onEsc(); return; }
     if (e.code === 'KeyM') { setSound(!SAVE.set.snd); if (mode === 'settings') renderSettings(); return; }
     if (mode === 'map' && /^Digit[1-4]$/.test(e.code)) { pickWorld(+e.code.charAt(5) - 1); return; }
+    if (mode === 'build' && !e.repeat && buildKey(e)) { e.preventDefault(); return; }
     if (mode === 'result' && e.code === 'KeyN') { var nb = document.querySelector('#resRow [data-act="next"]'); if (nb) nb.click(); }
   });
   held = Arcade.keys(function (k, down, repeat) {
@@ -2779,6 +3074,7 @@
     if (k === 'pause') { pauseTap(); return; }
     if (k === 'restart') { if (mode === 'pause' || mode === 'result') retry(); return; }
     if (mode === 'play') { if (k === 'action' && !repeat) action(); return; }
+    if (mode === 'build') { if (k !== 'action' || !repeat) buildNav(k); return; }
     var it = navItems(), cur = it[navSel];
     if (cur && cur.tagName === 'INPUT' && (k === 'left' || k === 'right')) { setVol(SAVE.set.vol + (k === 'left' ? -.1 : .1)); return; }
     if (mode === 'map' && cur && cur.classList.contains('wld') && (k === 'left' || k === 'right')) { pickWorld(mapW + (k === 'left' ? -1 : 1)); return; }
@@ -2797,8 +3093,14 @@
      by its own travel from where the paddle already was (so a tap anywhere
      never teleports it, and the thumb never has to cover the comet). */
   function localX(e) { var r = canvas.getBoundingClientRect(); return (e.clientX - r.left) / Math.max(1, r.width) * W; }
+  function localY(e) { var r = canvas.getBoundingClientRect(); return (e.clientY - r.top) / Math.max(1, r.height) * H; }
   fieldEl.addEventListener('pointerdown', function (e) {
     audio();
+    if (mode === 'build') {
+      e.preventDefault(); buildPointer('down', localX(e), localY(e), e.button);
+      try { fieldEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      return;
+    }
     if (mode !== 'play' || (e.target.closest && e.target.closest('button'))) return;
     e.preventDefault();
     if (ptr.down && e.pointerId !== ptr.id) { action(); return; }   // a second finger fires
@@ -2808,6 +3110,7 @@
     try { fieldEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
   fieldEl.addEventListener('pointermove', function (e) {
+    if (mode === 'build') { buildPointer('move', localX(e), localY(e)); return; }
     if (mode !== 'play') return;
     var x = localX(e);
     if (e.pointerType === 'mouse') { P.tx = x; return; }
@@ -2817,12 +3120,19 @@
     P.tx = ptr.px0 + dx * SAVE.set.sens;
   });
   function endPtr(e) {
+    if (mode === 'build') buildPointer('up');
     if (!ptr.down || e.pointerId !== ptr.id) return;
     if (ptr.touch && mode === 'play' && e.type === 'pointerup' && now() - ptr.t0 < 320 && ptr.moved < 10) action();
     ptr.down = false; ptr.id = null;
   }
   fieldEl.addEventListener('pointerup', endPtr);
   fieldEl.addEventListener('pointercancel', endPtr);
+  fieldEl.addEventListener('contextmenu', function (e) { if (mode === 'build') e.preventDefault(); });
+  $('codeIn').addEventListener('keydown', function (e) {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); loadCode(); }
+    else if (e.key === 'Escape') { e.preventDefault(); showBuild(); }
+  });
 
   /* ── The game measures itself ────────────────────────────────────────────
    * A ring of the last 2,048 frames: the interval between frames and the
@@ -2870,7 +3180,8 @@
 
   Arcade.loop(function (dt) {
     var pt0 = now();
-    if (G) {
+    if (mode === 'build' && ED) renderBuild(dt);
+    else if (G) {
       if (mode === 'play' || (G.demo && mode !== 'pause')) step(dt);
       else if (mode === 'result') stepJuice(dt);
       render();
